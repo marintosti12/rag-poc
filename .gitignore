@@ -1,0 +1,304 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# pyenv
+.python-version
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ============================================================================
+# POETRY
+# ============================================================================
+
+# Poetry local config
+poetry.lock
+poetry.toml
+
+# Virtual environments created by Poetry
+.venv/
+venv/
+
+# ============================================================================
+# DONNÉES SENSIBLES
+# ============================================================================
+
+# Clés API et secrets
+.env
+.env.local
+.env.*.local
+*.key
+secrets.json
+config.json
+credentials.json
+
+# Fichiers de configuration avec données sensibles
+**/config/local.py
+**/config/production.py
+
+# ============================================================================
+# DONNÉES DU PROJET
+# ============================================================================
+
+# Données brutes téléchargées
+data/raw/
+data/raw/*.json
+data/raw/*.csv
+data/raw/*.txt
+
+# Données traitées (optionnel selon si vous voulez versionner)
+data/processed/
+data/processed/*.json
+data/processed/*.csv
+data/processed/chunks*.json
+
+# Index FAISS (gros fichiers binaires)
+data/processed/faiss_index/
+*.index
+*.faiss
+*.pkl
+
+# Embeddings (gros fichiers)
+data/processed/embeddings.npy
+data/processed/mistral_embeddings.npy
+
+# Historiques de chat
+data/chat_history.json
+data/*.log
+
+# Fichiers temporaires
+data/temp/
+data/tmp/
+
+# ============================================================================
+# MODÈLES ML
+# ============================================================================
+
+# Modèles téléchargés (HuggingFace cache)
+.cache/
+.huggingface/
+models/
+*.bin
+*.safetensors
+*.h5
+*.onnx
+
+# Sentence Transformers cache
+~/.cache/torch/sentence_transformers/
+
+# ============================================================================
+# IDE ET ÉDITEURS
+# ============================================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+.history/
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================================================
+# SYSTÈME D'EXPLOITATION
+# ============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ============================================================================
+# LOGS ET DEBUGGING
+# ============================================================================
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Debug files
+debug/
+*.debug
+
+# Profiling
+*.prof
+*.lprof
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+
+# Documentation générée
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# Sphinx
+docs/_build/
+
+# ============================================================================
+# TESTS
+# ============================================================================
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+test-results/
+.tox/
+
+# ============================================================================
+# HISTORIQUES ET CACHE
+# ============================================================================
+
+# Historique du chatbot
+.chat_history
+chat_history.txt
+*.history
+
+# Cache diverses
+.cache/
+*.cache
+
+# ============================================================================
+# FICHIERS VOLUMINEUX
+# ============================================================================
+
+# Fichiers de plus de 100MB (limite GitHub)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Datasets volumineux
+*.csv.gz
+*.jsonl
+large_datasets/
+
+# ============================================================================
+# RÉSULTATS D'ÉVALUATION
+# ============================================================================
+
+# Résultats d'expériences
+experiments/
+results/
+evaluation_results.json
+metrics/
+
+# Rapports générés
+reports/*.pdf
+reports/*.docx
+
+# ============================================================================
+# DOCKER (si vous utilisez Docker plus tard)
+# ============================================================================
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# ============================================================================
+# AUTRES
+# ============================================================================
+
+# Fichiers backup
+*.bak
+*.backup
+*.old
+*.orig
+
+# Fichiers temporaires
+*.tmp
+*.temp
+~*
+
+# Notebooks de tests
+notebooks/scratch/
+notebooks/experiments/
+
+# Scripts de test personnels
+scripts/test_*.py
+scripts/debug_*.py
+scripts/temp_*.py
