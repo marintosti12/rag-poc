@@ -20,8 +20,6 @@ RAG-POC/
 ├── scripts/                   # Scripts de pipeline
 │   ├── 1_collect_events.py   # Collecte depuis Open Agenda API
 │   ├── 2_build_vector_database.py  # Création de l'index FAISS
-│   ├── 3_run_rag.py          # Exécution du RAG en CLI
-│   └── 4_run_chatbot.py      # Interface chatbot interactive
 ├── src/                       
 │   ├── api/                  # Endpoints FastAPI
 │   ├── chunking/             # Découpage des documents
