@@ -29,10 +29,8 @@ import json
 
 
 class RichChatbot:
-    """Chatbot avec interface Rich terminal"""
     
     def __init__(self, vector_store):
-        """Initialise le chatbot"""
         self.rag = RAGSystem(vector_store)
         self.console = Console()
         self.history = []
@@ -208,7 +206,6 @@ Posez vos questions en langage naturel :
             sources_table.add_column("Score", style="magenta", width=8)
             
             for i, source in enumerate(result['sources'], 1):
-                self.console.print(source)
                 sources_table.add_row(
                     str(i),
                     source['title'][:40] if source['title'] else "Sans titre",
@@ -252,7 +249,7 @@ Posez vos questions en langage naturel :
         """Traite une question utilisateur"""
         # Animation de réflexion
         with self.console.status("[cyan]🔍 Recherche des événements...", spinner="dots"):
-            result = self.rag.query(user_input, k=5)
+            result = self.rag.query(user_input, k=10)
         
         # Sauvegarder dans l'historique
         self.history.append({

@@ -21,11 +21,35 @@ langchain-core = "^1.0.2"
 rich = "^14.2.0"
 prompt-toolkit = "^3.0.52"
 langchain-huggingface = "^1.0.0"
+fastapi = "^0.120.4"
+uvicorn = "^0.38.0"
+ragas = "^0.3.8"
+datasets = "^4.3.0"
+langchain-text-splitters = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.2"
 black = "^25.9.0"
+pytest-cov = "^7.0.0"
+pytest-mock = "^3.15.1"
+responses = "^0.25.8"
+freezegun = "^1.5.5"
+faker = "^38.0.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+test = "pytest:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=src --cov-report=html --cov-report=term-missing"
+markers = [
+    "unit: Tests unitaires",
+    "integration: Tests d'intégration",
+    "slow: Tests lents",
+    "api: Tests API"
+]

@@ -59,7 +59,8 @@ class OpenAgendaFetcher:
         
         params = {
             'size': min(limit, 100),
-            'detailed': 1
+            'detailed': 1,
+            'timings[tz]': 'Europe/Paris', 
         }
         
         if date_start:
@@ -71,32 +72,24 @@ class OpenAgendaFetcher:
         page = 0
         
         while len(events) < limit:
-            params['from'] = page * 100
-            
+            after = None
             try:
-                response = requests.get(url, headers=self.headers, params=params)
-                response.raise_for_status()
-                data = response.json()
-                
-                if 'error' in data:
-                    print(f"Erreur API : {data}")
-                    break
-                
+                if after:
+                    params['after'] = after
+                resp = requests.get(url, headers=self.headers, params=params)
+                data = resp.json()
                 page_events = data.get('events', [])
                 if not page_events:
-                    print(f"Aucun événement supplémentaire (page {page})")
                     break
-                    
                 events.extend(page_events)
-                print(f"✓ Page {page + 1} : {len(page_events)} événements récupérés")
-                page += 1
-                
-                total = data.get('total', 0)
-                if len(events) >= total:
+
+                # récupère le curseur suivant : selon la réponse, c'est souvent dans data['links']['next']['after'] 
+                links = data.get('links', {})
+                next_link = links.get('next', {})
+                after = next_link.get('after')
+                if not after:
                     break
-                
-                if page > 10:
-                    break
+
                     
             except requests.exceptions.HTTPError as e:
                 print(f"Erreur HTTP {e.response.status_code} : {e.response.text}")
@@ -151,14 +144,12 @@ class OpenAgendaFetcher:
         return all_events
     
     def save_raw_data(self, events: List[Dict], filepath: str):
-        """Sauvegarde les données brutes"""
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(events, f, ensure_ascii=False, indent=2)
         print(f"✓ {len(events)} événements sauvegardés dans {filepath}")
     
     def test_connection(self):
-        """Teste la connexion à l'API"""
         try:
             response = requests.get(
                 f"{self.base_url}/agendas",

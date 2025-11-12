@@ -1,0 +1,15 @@
+services:
+  rag-api:
+    build: .
+    container_name: rag_api
+    ports: ["8000:8000"]
+    env_file: [.env]
+    environment:
+      APP_MODULE: "src.api.main:app"
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      PERSIST_PATH: "data/processed/faiss_index"
+      EMBED_PROVIDER: "huggingface"
+    volumes:
+      - ./data:/app/data:rw
+    restart: unless-stopped

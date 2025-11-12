@@ -2,7 +2,7 @@
 import sys
 import os
 
-from src.chunking.text_splitter import EventTextSplitter
+from src.chunking.event_chunking import EventChunking
 from src.vector.langchain_faiss import FAISSVectorStore
 import json
 
@@ -43,7 +43,7 @@ def main():
         return 1
     
     print("DÉCOUPAGE EN CHUNKS")
-    splitter = EventTextSplitter(
+    splitter = EventChunking(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP
     )
@@ -56,14 +56,14 @@ def main():
     # Sauvegarder un échantillon de chunks
     chunks_sample_file = 'data/processed/chunks_sample.json'
     with open(chunks_sample_file, 'w', encoding='utf-8') as f:
-        json.dump(chunks[:10], f, ensure_ascii=False, indent=2)
+        json.dump(chunks, f, ensure_ascii=False, indent=2)
     print(f"  • Échantillon sauvegardé : {chunks_sample_file}")
     
     # Exemple de chunk
     print(f"\n📝 Exemple de chunk :")
     example_chunk = chunks[0]
-    print(f"  Titre événement : {example_chunk['event_title']}")
-    print(f"  Texte : {example_chunk['text'][:150]}...")
+    print(f"  Titre événement : {example_chunk.get('title', '(sans titre)')}")
+    print(f"  Texte : {example_chunk.get('text', '')[:150]}...")
     
     print("🔢 VECTORISATION ET INDEXATION FAISS")
     

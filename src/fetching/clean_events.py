@@ -28,19 +28,35 @@ class EventsCleaner:
 
                 cleaned.append(cleaned_event)
             except Exception as e:
-                print(f"Erreur sur événement {event.get('uid')}: {e}")
+                uid = event.get('uid') if event and isinstance(event, dict) else 'inconnu'
+                print(f"Erreur sur événement {uid}: {e}")
                 continue
+        
+        # Définir les colonnes explicitement pour garantir l'ordre et la présence même si vide
+        columns = [
+            'id', 'title', 'description', 'location_name', 
+            'location_city', 'date_start', 'date_end', 
+            'url', 'keywords', 'category'
+        ]
+        
+        if not cleaned:
+            # Retourner un DataFrame vide avec les bonnes colonnes
+            return pd.DataFrame(columns=columns)
                 
-        return pd.DataFrame(cleaned)
+        return pd.DataFrame(cleaned, columns=columns)
     
     @staticmethod
     def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
         """Supprime les doublons"""
+        if df.empty:
+            return df
         return df.drop_duplicates(subset=['id'])
     
     @staticmethod
     def remove_missing_descriptions(df: pd.DataFrame) -> pd.DataFrame:
         """Supprime les événements sans description"""
+        if df.empty or 'description' not in df.columns:
+            return df
         return df[df['description'].notna() & (df['description'] != '')]
     
     @staticmethod

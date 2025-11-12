@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>RAG Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#0b1220',
+            card: '#0f172a',
+            line: '#1f2937',
+            accent: '#60a5fa',
+            text: '#e5e7eb',
+            muted: '#9ca3af'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Markdown parser + sanitizer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+
+  <!-- Styles Markdown (tableaux, liens, etc.) -->
+  <style>
+    .md :where(table){width:100%; border-collapse:collapse; margin:0.5rem 0;}
+    .md :where(th,td){border:1px solid #1f2937; padding:0.5rem; vertical-align:top;}
+    .md :where(th){background:#0b1220; font-weight:600;}
+    .md :where(a){text-decoration:underline; color:#60a5fa;}
+    .md :where(code){background:#0b1220; padding:0.1rem 0.3rem; border-radius:0.25rem;}
+    .md :where(h1,h2,h3){margin-top:0.75rem; font-weight:700;}
+    .md :where(p,ul,ol){margin:0.35rem 0;}
+  </style>
+</head>
+
+<body class="bg-bg text-text min-h-screen">
+  <div class="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-4 h-screen">
+    <!-- Header -->
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold">RAG Chat</h1>
+      </div>
+      <div class="text-right">
+        <button id="editApi" class="text-xs text-accent hover:underline">Changer l’URL de l’API</button>
+        <div class="text-xs text-muted">API: <span id="apiBaseLabel"></span></div>
+      </div>
+    </header>
+
+    <!-- Messages -->
+    <main id="messages"
+      class="flex-1 overflow-auto rounded-2xl border border-line bg-card p-4 space-y-3">
+      <!-- messages insérés ici -->
+    </main>
+
+    <!-- Composer -->
+    <section class="rounded-2xl bg-card border border-line p-4 space-y-3">
+      <form id="form" class="flex items-stretch gap-2">
+        <input id="q" type="text" autocomplete="off"
+          placeholder="Ex: Événements de jazz à Paris en novembre ?"
+          class="flex-1 rounded-xl bg-bg border border-line px-4 py-3 outline-none focus:border-accent"
+        />
+        <button id="sendBtn" type="submit"
+          class="rounded-xl bg-accent text-bg font-semibold px-4 py-3 hover:opacity-90 disabled:opacity-60">
+          Envoyer
+        </button>
+      </form>
+
+      <div class="flex items-center gap-3 text-sm">
+        <label class="flex items-center gap-2">
+          <span class="text-muted">K</span>
+          <input id="topk" type="number" min="1" max="20" value="10"
+            class="w-20 rounded-lg bg-bg border border-line px-3 py-2 outline-none focus:border-accent" />
+        </label>
+        <button id="rebuildBtn"
+          class="rounded-lg bg-emerald-400/90 text-bg font-medium px-3 py-2 hover:opacity-90">
+          Rebuild
+        </button>
+        <span id="status" class="text-xs text-muted"></span>
+      </div>
+
+      <div id="error" class="text-sm text-red-300"></div>
+    </section>
+  </div>
+
+  <script>
+    // ====== CONFIG ======
+    const DEFAULT_API = "http://127.0.0.1:8000";
+    const API_BASE = localStorage.getItem("API_BASE") || DEFAULT_API;
+
+    // ====== DOM ======
+    const elMsgs   = document.getElementById("messages");
+    const elForm   = document.getElementById("form");
+    const elQ      = document.getElementById("q");
+    const elK      = document.getElementById("topk");
+    const elSend   = document.getElementById("sendBtn");
+    const elErr    = document.getElementById("error");
+    const elStatus = document.getElementById("status");
+    const elApiLbl = document.getElementById("apiBaseLabel");
+    const elEditApi= document.getElementById("editApi");
+
+    elApiLbl.textContent = API_BASE;
+    elApiLbl.title = "Double-cliquez pour modifier";
+    elApiLbl.addEventListener("dblclick", editApi);
+    elEditApi.addEventListener("click", editApi);
+
+    function editApi() {
+      const url = prompt("URL de l’API FastAPI :", API_BASE);
+      if (url) {
+        localStorage.setItem("API_BASE", url.trim());
+        location.reload();
+      }
+    }
+
+    // ====== Markdown rendering ======
+    function renderMarkdown(mdText) {
+      const renderer = new marked.Renderer();
+      const oldLink = renderer.link;
+      renderer.link = function(href, title, text) {
+        const html = oldLink.call(this, href, title, text);
+        return html.replace('<a ', '<a target="_blank" rel="noopener noreferrer" ');
+      };
+      marked.setOptions({
+        breaks: true,
+        mangle: false,
+        headerIds: false,
+        renderer
+      });
+      const rawHtml = marked.parse(mdText || "");
+      return DOMPurify.sanitize(rawHtml);
+    }
+
+    // ====== UI helpers ======
+    function addMsg(text, who = "bot") {
+      const row = document.createElement("div");
+      row.className = "flex " + (who === "me" ? "justify-end" : "justify-start");
+
+      const bubble = document.createElement("div");
+      bubble.className = (who === "me")
+        ? "max-w-[80%] rounded-2xl px-4 py-3 bg-[#1e293b] border border-line md"
+        : "max-w-[80%] rounded-2xl px-4 py-3 bg-[#0b1220] border border-line md";
+
+      // Rendu Markdown sécurisé
+      bubble.innerHTML = renderMarkdown(text);
+
+      row.appendChild(bubble);
+      elMsgs.appendChild(row);
+      elMsgs.scrollTop = elMsgs.scrollHeight;
+    }
+
+    function spinner(label = "En cours…") {
+      return `
+        <span class="inline-flex items-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-muted" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z"></path>
+          </svg>
+          <span>${label}</span>
+        </span>`;
+    }
+
+    function setLoading(isLoading, label = "Traitement…") {
+      elSend.disabled = isLoading;
+      elQ.disabled = isLoading;
+      elK.disabled = isLoading;
+      elStatus.innerHTML = isLoading ? spinner(label) : "";
+    }
+
+    // ====== API calls ======
+    async function ask(question, k = 10) {
+      elErr.textContent = "";
+      setLoading(true, "Réponse en cours…");
+      try {
+        const res = await fetch(`${API_BASE}/ask`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, k })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        return await res.json();
+      } finally {
+        setLoading(false, "");
+      }
+    }
+
+    async function rebuildDemo() {
+      elErr.textContent = "";
+      elStatus.innerHTML = spinner("Rebuild…");
+      try {
+        const payload = {
+          docs: [
+            { text: "Concert Jazz à Paris, 15/11/2025, Salle Pleyel.", metadata: { category:"jazz", date_start:"2025-11-15" } },
+            { text: "Expo photo à Lyon, 20/11/2025.", metadata: { category:"exposition", date_start:"2025-11-20" } }
+          ],
+          persist_path: "data/processed/faiss_index",
+          embedding_provider: "mistral"
+        };
+        const res = await fetch(`${API_BASE}/rebuild`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        elStatus.textContent = `Index prêt (${data.count} éléments)`;
+      } catch (e) {
+        elErr.textContent = e.message || String(e);
+        elStatus.textContent = "";
+      }
+    }
+
+    // ====== Events ======
+    document.getElementById("rebuildBtn").addEventListener("click", rebuildDemo);
+
+    elForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const q = elQ.value.trim();
+      if (!q) return;
+
+      // Message utilisateur (rendu Markdown pour homogénéité : italique par ex.)
+      addMsg(`*${q}*`, "me");
+      elQ.value = "";
+
+      try {
+        const k = Math.max(1, Math.min(20, parseInt(elK.value || "10", 10)));
+        const data = await ask(q, k);
+
+        // Réponse du bot (Markdown rendu)
+        addMsg(data.answer || "(pas de réponse)");
+
+        // Info contexte (texte simple ou mini markdown)
+        if (Array.isArray(data.contexts) && data.contexts.length) {
+          addMsg(`_(${data.contexts.length} passages utilisés)_`, "bot");
+        }
+      } catch (e) {
+        elErr.textContent = e.message || String(e);
+      }
+    });
+
+    // Message d’accueil
+    addMsg("Bonjour 👋 Posez une question (ex.: « Événements de jazz à Paris en novembre ? »)");
+  </script>
+</body>
+</html>

@@ -8,7 +8,6 @@ from src.vector.langchain_faiss import FAISSVectorStore
 
 
 def main():
-    
     print("="*70)
     print("TEST DU SYSTÈME RAG")
     print("="*70)

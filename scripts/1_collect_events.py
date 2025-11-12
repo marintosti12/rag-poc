@@ -54,11 +54,12 @@ def main():
     
     # Configuration
     API_KEY = os.getenv("OPEN_AGENDA_API_KEY")
-    LOCATION = "Paris"
-    DATE_START = "2024-01-01"
-    DATE_END = "2025-12-31"
-    LIMIT_PER_AGENDA = 50
-    LIMIT_AGENDAS = 5
+    LOCATION = os.getenv("TARGET_CITY")
+    DATE_START = "2024-10-30T00:00:00.000Z"
+    DATE_END   = "2026-10-30T23:59:59.999Z"
+
+    LIMIT_PER_AGENDA = 60
+    LIMIT_AGENDAS = 7
     OUTPUT_FILE = "data/raw/events_raw.json"
     CLEAN_JSON = "data/processed/events_clean.json"
     CLEAN_CSV = "data/processed/events_clean.csv"
