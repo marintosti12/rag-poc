@@ -1,6 +1,7 @@
 """
 Configuration pytest et fixtures réutilisables
 """
+from unittest.mock import Mock
 import pytest
 import json
 import os
@@ -277,3 +278,83 @@ def freeze_time():
 #     """Réinitialise les options pandas après chaque test"""
 #     yield
 #     pd.reset_option('all')
+
+# ============================================================================
+# FIXTURES - Données de test
+# ============================================================================
+
+@pytest.fixture
+def sample_chunks():
+    """Chunks valides pour les tests"""
+    return [
+        {
+            'text': 'Concert de jazz à Paris le 15 décembre',
+            'id': 'event-1',
+            'category': 'musique',
+            'city': 'Paris'
+        },
+        {
+            'text': 'Exposition d\'art moderne au musée',
+            'id': 'event-2',
+            'category': 'exposition',
+            'city': 'Lyon'
+        },
+        {
+            'text': 'Festival de théâtre en plein air',
+            'id': 'event-3',
+            'category': 'théâtre',
+            'city': 'Marseille'
+        }
+    ]
+
+
+@pytest.fixture
+def sample_chunks_with_empty():
+    """Chunks avec textes vides"""
+    return [
+        {'text': 'Concert de jazz', 'id': 'event-1'},
+        {'text': '', 'id': 'event-2'},  # Texte vide
+        {'text': '   ', 'id': 'event-3'},  # Seulement espaces
+        {'text': 'Exposition d\'art', 'id': 'event-4'},
+    ]
+
+
+@pytest.fixture
+def chunks_without_text():
+    """Chunks sans clé 'text'"""
+    return [
+        {'id': 'event-1', 'category': 'musique'},
+        {'id': 'event-2', 'category': 'exposition'}
+    ]
+
+
+@pytest.fixture
+def mock_embeddings():
+    """Mock pour les embeddings"""
+    mock = Mock()
+    mock.embed_documents = Mock(return_value=[[0.1, 0.2, 0.3]] * 3)
+    mock.embed_query = Mock(return_value=[0.1, 0.2, 0.3])
+    return mock
+
+
+@pytest.fixture
+def mock_vector_store():
+    """Mock pour le vector store FAISS"""
+    mock = Mock()
+    mock.docstore = Mock()
+    mock.docstore._dict = {'doc1': 'value1', 'doc2': 'value2'}
+    mock.similarity_search_with_score = Mock(return_value=[])
+    mock.add_texts = Mock()
+    mock.save_local = Mock()
+    return mock
+
+
+@pytest.fixture
+def temp_index_dir(tmp_path):
+    """Répertoire temporaire pour les index"""
+    index_dir = tmp_path / "faiss_index"
+    index_dir.mkdir()
+    return str(index_dir)
+
+
+

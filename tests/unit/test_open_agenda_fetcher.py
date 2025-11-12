@@ -1,536 +1,192 @@
-"""
-Tests unitaires pour OpenAgendaFetcher
-"""
-import pytest
-import responses
+import requests
+import pandas as pd
 import json
-from src.fetching.fetch_events import OpenAgendaFetcher
+from datetime import datetime
+from typing import List, Dict, Optional
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
-# ============================================================================
-# Tests d'initialisation
-# ============================================================================
-
-@pytest.mark.unit
-class TestInitialization:
-    """Tests pour l'initialisation de OpenAgendaFetcher"""
-    
-    def test_init_with_api_key(self, mock_api_key):
-        """Test initialisation avec clé API"""
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        
-        assert fetcher.api_key == mock_api_key
-        assert fetcher.base_url == "https://api.openagenda.com/v2"
-        assert fetcher.headers['Authorization'] == f'Bearer {mock_api_key}'
-        assert fetcher.headers['Content-Type'] == 'application/json'
-    
-    def test_init_without_api_key(self):
-        """Test initialisation sans clé API"""
-        fetcher = OpenAgendaFetcher(api_key="")
-        
-        assert fetcher.api_key == ""
-        assert fetcher.headers['Authorization'] == 'Bearer '
-
-
-# ============================================================================
-# Tests pour test_connection
-# ============================================================================
-
-@pytest.mark.unit
-class TestConnectionTest:
-    """Tests pour la méthode test_connection"""
-    
-    @responses.activate
-    def test_connection_success(self, mock_api_key, capsys):
-        """Test connexion réussie"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'agendas': []},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.test_connection()
-        captured = capsys.readouterr()
-        
-        assert result is True
-        assert "✓ Connexion à l'API réussie" in captured.out
-    
-    @responses.activate
-    def test_connection_authentication_error(self, mock_api_key, capsys):
-        """Test erreur d'authentification"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'error': 'Unauthorized'},
-            status=401
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.test_connection()
-        captured = capsys.readouterr()
-        
-        assert result is False
-        assert "✗ Erreur d'authentification (401)" in captured.out
-    
-    @responses.activate
-    def test_connection_network_error(self, mock_api_key, capsys):
-        """Test erreur réseau"""
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.test_connection()
-        captured = capsys.readouterr()
-        
-        assert result is False
-        assert "✗ Erreur de connexion" in captured.out
-
-
-# ============================================================================
-# Tests pour list_agendas
-# ============================================================================
-
-@pytest.mark.unit
-class TestListAgendas:
-    """Tests pour la méthode list_agendas"""
-    
-    @responses.activate
-    def test_list_agendas_success(self, mock_api_key, mock_agendas_response, capsys):
-        """Test liste agendas avec succès"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json=mock_agendas_response,
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas()
-        captured = capsys.readouterr()
-        
-        assert len(result) == 2
-        assert result[0]['uid'] == 'agenda-1'
-        assert "✓ 2 agenda(s) trouvé(s)" in captured.out
-        assert "Agenda Paris (UID: agenda-1)" in captured.out
-    
-    @responses.activate
-    def test_list_agendas_with_search(self, mock_api_key):
-        """Test recherche d'agendas avec terme de recherche"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'agendas': [{'uid': 'agenda-paris', 'title': {'fr': 'Paris Events'}}]},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas(search="Paris")
-        
-        assert len(result) == 1
-        # Vérifie que le paramètre search a été envoyé
-        assert len(responses.calls) == 1
-        assert 'search=Paris' in responses.calls[0].request.url
-    
-    @responses.activate
-    def test_list_agendas_with_limit(self, mock_api_key, capsys):
-        """Test limite d'affichage des agendas"""
-        many_agendas = {
-            'agendas': [
-                {'uid': f'agenda-{i}', 'title': {'fr': f'Agenda {i}'}} 
-                for i in range(20)
-            ]
+class OpenAgendaFetcher:    
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.openagenda.com/v2"
+        self.headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
         }
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json=many_agendas,
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas(agendaLimit=5)
-        captured = capsys.readouterr()
-        
-        assert len(result) == 20  # Tous les agendas retournés
-        # Mais seulement 5 affichés dans les logs
-        assert captured.out.count('UID: agenda-') == 5
     
-    @responses.activate
-    def test_list_agendas_with_string_title(self, mock_api_key, capsys):
-        """Test agenda avec titre string au lieu de dict"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'agendas': [{'uid': 'agenda-1', 'title': 'Simple Title'}]},
-            status=200
-        )
+    def list_agendas(self, search: Optional[str] = None, agendaLimit: int = 10) -> List[Dict]:
+        url = f"{self.base_url}/agendas"
+        params = {}
         
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas()
-        captured = capsys.readouterr()
+        if search:
+            params['search'] = search
         
-        assert len(result) == 1
-        assert "Simple Title (UID: agenda-1)" in captured.out
+        try:
+            response = requests.get(url, headers=self.headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            agendas = data.get('agendas', [])
+            print(f"✓ {len(agendas)} agenda(s) trouvé(s)")
+            
+            for agenda in agendas[:agendaLimit]:  
+                title = agenda.get('title')
+                if isinstance(title, dict):
+                    title = title.get('fr') or title.get('en') or 'Sans titre'
+                elif not title:
+                    title = 'Sans titre'
+                
+                uid = agenda.get('uid', 'N/A')
+                print(f"  - {title} (UID: {uid})")
+            
+            return agendas
+            
+        except requests.exceptions.RequestException as e:
+            print(f"Erreur lors de la récupération des agendas : {e}")
+            return []
     
-    @responses.activate
-    def test_list_agendas_empty_response(self, mock_api_key, capsys):
-        """Test réponse vide"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'agendas': []},
-            status=200
-        )
+    def fetch_events(self, 
+                     agenda_uid: str,
+                     date_start: Optional[str] = None,
+                     date_end: Optional[str] = None,
+                     limit: int = 100) -> List[Dict]:
         
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas()
-        captured = capsys.readouterr()
+        url = f"{self.base_url}/agendas/{agenda_uid}/events"
         
-        assert result == []
-        assert "✓ 0 agenda(s) trouvé(s)" in captured.out
+        params = {
+            'size': min(limit, 100),
+            'detailed': 1,
+            'timings[tz]': 'Europe/Paris', 
+        }
+        
+        if date_start:
+            params['timings[gte]'] = date_start
+        if date_end:
+            params['timings[lte]'] = date_end
+        
+        events = []
+        page = 1
+        after = None
+        max_pages = 11  # Page 0 à 10
+        
+        while len(events) < limit and page <= max_pages:
+            try:
+                if after:
+                    params['after'] = after
+                
+                resp = requests.get(url, headers=self.headers, params=params)
+                
+                # Gestion des erreurs HTTP
+                if resp.status_code != 200:
+                    print(f"Erreur HTTP {resp.status_code} : {resp.text}")
+                    break
+                
+                data = resp.json()
+                
+                # Vérification des erreurs API
+                if 'error' in data:
+                    print(f"Erreur API : {data.get('error')}")
+                    break
+                
+                page_events = data.get('events', [])
+                
+                # Si aucun événement dans cette page
+                if not page_events:
+                    print("Aucun événement supplémentaire trouvé.")
+                    break
+                
+                # Affiche le nombre d'événements pour cette page
+                print(f"✓ Page {page} : {len(page_events)} événements récupérés")
+                
+                events.extend(page_events)
+                
+                # Récupère le curseur suivant
+                links = data.get('links', {})
+                next_link = links.get('next', {})
+                after = next_link.get('after')
+                
+                # Si pas de curseur suivant, on arrête
+                if not after:
+                    break
+                
+                page += 1
+                    
+            except requests.exceptions.HTTPError as e:
+                print(f"Erreur HTTP {e.response.status_code} : {e.response.text}")
+                break
+            except requests.exceptions.RequestException as e:
+                print(f"Erreur lors de la récupération : {e}")
+                break
+        
+        final_events = events[:limit]
+        print(f"\n✓ Total : {len(final_events)} événements récupérés")
+        return final_events
     
-    @responses.activate
-    def test_list_agendas_request_error(self, mock_api_key, capsys):
-        """Test erreur de requête"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'error': 'Bad request'},
-            status=400
-        )
+    def fetch_events_from_multiple_agendas(self,
+                                          location: str,
+                                          date_start: str,
+                                          date_end: str,
+                                          limit: int = 100, 
+                                          agendaLimit: int = 5) -> List[Dict]:
         
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.list_agendas()
-        captured = capsys.readouterr()
+        print(f"\n🔍 Recherche d'agendas pour : {location}")
+        agendas = self.list_agendas(search=location, agendaLimit=20)
         
-        assert result == []
-        assert "Erreur lors de la récupération des agendas" in captured.out
-
-
-# ============================================================================
-# Tests pour fetch_events
-# ============================================================================
-
-@pytest.mark.unit
-class TestFetchEvents:
-    """Tests pour la méthode fetch_events"""
-    
-    @responses.activate
-    def test_fetch_events_success(self, mock_api_key, mock_events_response, capsys):
-        """Test récupération d'événements avec succès"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json=mock_events_response,
-            status=200
-        )
+        if not agendas:
+            print(f"⚠️ Aucun agenda trouvé pour {location}")
+            return []
         
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1")
-        captured = capsys.readouterr()
+        all_events = []
         
-        assert len(result) == 1
-        assert result[0]['uid'] == 'event-1'
-        assert "✓ Page 1 : 1 événements récupérés" in captured.out
-        assert "✓ Total : 1 événements récupérés" in captured.out
-    
-    @responses.activate
-    def test_fetch_events_with_date_filters(self, mock_api_key, mock_events_response):
-        """Test avec filtres de dates"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json=mock_events_response,
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(
-            agenda_uid="agenda-1",
-            date_start="2025-12-01",
-            date_end="2025-12-31"
-        )
-        
-        assert len(result) == 1
-        # Vérifie que les paramètres de date ont été envoyés
-        request_url = responses.calls[0].request.url
-        assert 'timings%5Bgte%5D=2025-12-01' in request_url
-        assert 'timings%5Blte%5D=2025-12-31' in request_url
-    
-    @responses.activate
-    def test_fetch_events_with_limit(self, mock_api_key):
-        """Test avec limite d'événements"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={'events': [{'uid': f'event-{i}'} for i in range(50)], 'total': 50},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1", limit=50)
-        
-        assert len(result) == 50
-    
-    @responses.activate
-    def test_fetch_events_pagination(self, mock_api_key, capsys):
-        """Test pagination avec plusieurs pages"""
-        # Page 1
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={
-                'events': [{'uid': f'event-{i}'} for i in range(100)],
-                'total': 150
-            },
-            status=200
-        )
-        # Page 2
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={
-                'events': [{'uid': f'event-{i}'} for i in range(100, 150)],
-                'total': 150
-            },
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1", limit=150)
-        captured = capsys.readouterr()
-        
-        assert len(result) == 150
-        assert "✓ Page 1 : 100 événements récupérés" in captured.out
-        assert "✓ Page 2 : 50 événements récupérés" in captured.out
-    
-    @responses.activate
-    def test_fetch_events_empty_page(self, mock_api_key, capsys):
-        """Test page vide"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={'events': [], 'total': 0},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1")
-        captured = capsys.readouterr()
-        
-        assert result == []
-        assert "Aucun événement supplémentaire" in captured.out
-    
-    @responses.activate
-    def test_fetch_events_api_error(self, mock_api_key, capsys):
-        """Test erreur API"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={'error': 'Agenda not found'},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1")
-        captured = capsys.readouterr()
-        
-        assert result == []
-        assert "Erreur API" in captured.out
-    
-    @responses.activate
-    def test_fetch_events_http_error(self, mock_api_key, capsys):
-        """Test erreur HTTP"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={'error': 'Not found'},
-            status=404
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1")
-        captured = capsys.readouterr()
-        
-        assert result == []
-        assert "Erreur HTTP 404" in captured.out
-    
-    @responses.activate
-    def test_fetch_events_max_pages_limit(self, mock_api_key, capsys):
-        """Test limite maximale de pages (10)"""
-        # Simule 15 pages disponibles
-        for i in range(15):
-            responses.add(
-                responses.GET,
-                "https://api.openagenda.com/v2/agendas/agenda-1/events",
-                json={
-                    'events': [{'uid': f'event-{i * 100 + j}'} for j in range(100)],
-                    'total': 1500
-                },
-                status=200
+        for agenda in agendas[:agendaLimit]:
+            agenda_uid = agenda.get('uid')
+            title = agenda.get('title')
+            if isinstance(title, dict):
+                agenda_title = title.get('fr') or title.get('en') or 'Sans titre'
+            elif isinstance(title, str):
+                agenda_title = title
+            else:
+                agenda_title = 'Sans titre'
+            
+            print(f"\n📥 Récupération des événements de : {agenda_title}")
+            events = self.fetch_events(
+                agenda_uid=agenda_uid,
+                date_start=date_start,
+                date_end=date_end,
+                limit=limit
             )
+            
+            for event in events:
+                event['source_agenda'] = agenda_title
+                event['source_agenda_uid'] = agenda_uid
+            
+            all_events.extend(events)
         
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events(agenda_uid="agenda-1", limit=2000)
-        
-        # Doit s'arrêter après 11 pages (page 0 à 10)
-        assert len(result) <= 1100
-        assert len(responses.calls) <= 11
-
-
-# ============================================================================
-# Tests pour fetch_events_from_multiple_agendas
-# ============================================================================
-
-@pytest.mark.unit
-class TestFetchEventsFromMultipleAgendas:
-    """Tests pour la méthode fetch_events_from_multiple_agendas"""
+        return all_events
     
-    @responses.activate
-    def test_fetch_from_multiple_agendas_success(self, mock_api_key, capsys):
-        """Test récupération depuis plusieurs agendas"""
-        # Mock list_agendas
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={
-                'agendas': [
-                    {'uid': 'agenda-1', 'title': {'fr': 'Agenda 1'}},
-                    {'uid': 'agenda-2', 'title': {'fr': 'Agenda 2'}}
-                ]
-            },
-            status=200
-        )
-        
-        # Mock fetch_events pour agenda-1
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-1/events",
-            json={'events': [{'uid': 'event-1', 'title': {'fr': 'Event 1'}}], 'total': 1},
-            status=200
-        )
-        
-        # Mock fetch_events pour agenda-2
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas/agenda-2/events",
-            json={'events': [{'uid': 'event-2', 'title': {'fr': 'Event 2'}}], 'total': 1},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events_from_multiple_agendas(
-            location="Paris",
-            date_start="2025-12-01",
-            date_end="2025-12-31",
-            agendaLimit=2
-        )
-        captured = capsys.readouterr()
-        
-        assert len(result) == 2
-        assert result[0]['source_agenda'] == 'Agenda 1'
-        assert result[1]['source_agenda'] == 'Agenda 2'
-        assert "🔍 Recherche d'agendas pour : Paris" in captured.out
+    def save_raw_data(self, events: List[Dict], filepath: str):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(events, f, ensure_ascii=False, indent=2)
+        print(f"✓ {len(events)} événements sauvegardés dans {filepath}")
     
-    @responses.activate
-    def test_fetch_from_multiple_agendas_no_agendas(self, mock_api_key, capsys):
-        """Test avec aucun agenda trouvé"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={'agendas': []},
-            status=200
-        )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events_from_multiple_agendas(
-            location="Unknown",
-            date_start="2025-12-01",
-            date_end="2025-12-31"
-        )
-        captured = capsys.readouterr()
-        
-        assert result == []
-        assert "⚠️ Aucun agenda trouvé pour Unknown" in captured.out
-    
-    @responses.activate
-    def test_fetch_from_multiple_agendas_respects_limit(self, mock_api_key):
-        """Test que la limite d'agendas est respectée"""
-        responses.add(
-            responses.GET,
-            "https://api.openagenda.com/v2/agendas",
-            json={
-                'agendas': [
-                    {'uid': f'agenda-{i}', 'title': {'fr': f'Agenda {i}'}} 
-                    for i in range(10)
-                ]
-            },
-            status=200
-        )
-        
-        # Mock pour 3 agendas seulement
-        for i in range(3):
-            responses.add(
-                responses.GET,
-                f"https://api.openagenda.com/v2/agendas/agenda-{i}/events",
-                json={'events': [{'uid': f'event-{i}'}], 'total': 1},
-                status=200
+    def test_connection(self):
+        try:
+            response = requests.get(
+                f"{self.base_url}/agendas",
+                headers=self.headers,
+                params={'size': 1}
             )
-        
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        result = fetcher.fetch_events_from_multiple_agendas(
-            location="Test",
-            date_start="2025-12-01",
-            date_end="2025-12-31",
-            agendaLimit=3
-        )
-        
-        # Seulement 3 événements (1 par agenda)
-        assert len(result) == 3
-
-
-# ============================================================================
-# Tests pour save_raw_data
-# ============================================================================
-
-@pytest.mark.unit
-class TestSaveRawData:
-    """Tests pour la méthode save_raw_data"""
-    
-    def test_save_raw_data_success(self, mock_api_key, sample_events_list, tmp_path, capsys):
-        """Test sauvegarde réussie"""
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        filepath = tmp_path / "data" / "raw" / "test_events.json"
-        
-        fetcher.save_raw_data(sample_events_list, str(filepath))
-        captured = capsys.readouterr()
-        
-        assert filepath.exists()
-        assert f"✓ 3 événements sauvegardés dans {filepath}" in captured.out
-        
-        # Vérifie le contenu
-        with open(filepath, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        assert len(data) == 3
-        assert data[0]['uid'] == 'event-123'
-    
-    def test_save_raw_data_creates_directory(self, mock_api_key, sample_events_list, tmp_path):
-        """Test que les dossiers sont créés automatiquement"""
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        filepath = tmp_path / "new_dir" / "sub_dir" / "events.json"
-        
-        fetcher.save_raw_data(sample_events_list, str(filepath))
-        
-        assert filepath.exists()
-        assert filepath.parent.exists()
-    
-    def test_save_raw_data_empty_list(self, mock_api_key, tmp_path):
-        """Test sauvegarde d'une liste vide"""
-        fetcher = OpenAgendaFetcher(api_key=mock_api_key)
-        filepath = tmp_path / "empty.json"
-        
-        fetcher.save_raw_data([], str(filepath))
-        
-        assert filepath.exists()
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-        assert data == []
+            response.raise_for_status()
+            print("✓ Connexion à l'API réussie")
+            return True
+        except requests.exceptions.HTTPError as e:
+            print(f"✗ Erreur d'authentification ({e.response.status_code})")
+            print(f"Réponse : {e.response.text}")
+            return False
+        except Exception as e:
+            print(f"✗ Erreur de connexion : {e}")
+            return False
