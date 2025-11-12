@@ -33,6 +33,7 @@ RAG-POC/
 ├── .gitignore
 ├── docker-compose.yml         # Orchestration Docker
 ├── Dockerfile                 # Image Docker de l'API
+├── chat.html                  # Chat Web
 ├── poetry.lock                
 ├── pyproject.toml             # Configuration Poetry et dépendances
 ├── poetry.lock                
@@ -159,19 +160,18 @@ poetry run python scripts/2_build_vector_database.py
 
 **Sortie attendue** : Index FAISS sauvegardé dans `data/faiss_index/`
 
-#### 3️⃣ Tester le RAG en CLI
 
-```bash
-poetry run python scripts/3_run_rag.py
-```
 
-#### 4️⃣ Lancer le Chatbot Interactif (Optionnel)
+## 💬 Lancer l’app Web (interface de chat)
 
-```bash
-poetry run python scripts/4_run_chatbot.py
-```
+Le fichier **`chat.html`** permet de tester rapidement le chatbot en local.
 
-Interface conversationnelle en ligne de commande.
+### 🔧 Étapes
+4. **Ouvrez-le avec votre navigateur** :
+-  “Ouvrir avec le navigateur par défaut”
+
+![Texte alternatif](images/web.png)
+
 
 ---
 
@@ -180,7 +180,7 @@ Interface conversationnelle en ligne de commande.
 #### Sans Docker
 
 ```bash
-poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+poetry run uvicorn main:app --reload --app-dir src/api
 ```
 
 Accédez à :
@@ -210,24 +210,55 @@ Envoyer une question au système RAG.
 ```json
 {
   "question": "Quels sont les événements jazz à Paris ce week-end ?",
-  "max_results": 5
+  "k": 5
 }
 ```
 
 **Réponse** :
 ```json
 {
-  "question": "Quels sont les événements jazz à Paris ce week-end ?",
-  "answer": "Voici les événements jazz à Paris ce week-end : ...",
-  "sources": [
+  "answer": "Réponse du système"
+}
+```
+
+
+### `POST /rebuild`
+
+Reconstruit l'index FAISS
+
+
+**Requête** :
+```json
+{
+  "docs": [
     {
-      "title": "Festival Jazz à la Villette",
-      "date": "2025-11-15",
-      "location": "Parc de la Villette",
-      "description": "..."
+      "metadata": {
+        "category": "jazz",
+        "date_start": "2025-11-15",
+        "url": "https://exemple/jazz"
+      },
+      "text": "Concert Jazz à Paris, 15/11/2025, Salle Pleyel."
+    },
+    {
+      "metadata": {
+        "category": "exposition",
+        "date_start": "2025-11-20"
+      },
+      "text": "Expo photo à Lyon, 20/11/2025."
     }
   ],
-  "response_time": 1.23
+  "persist_path": "data/processed/faiss_index"
+}
+```
+
+**Réponse** :
+```json
+{
+  "count": 2,
+  "created_at": "2025-11-03T10:22:45.123456+00:00",
+  "index_path": "data/processed/faiss_index",
+  "ok": true,
+  "provider": "mistral"
 }
 ```
 
@@ -250,39 +281,21 @@ Vérifier l'état de l'API.
 ### Exécuter les Tests Unitaires
 
 ```bash
-# Tous les tests
-poetry run pytest tests/
 
-# Tests avec couverture
-poetry run pytest tests/ --cov=src --cov-report=html
+poetry run test
 
-# Tests spécifiques
-poetry run pytest tests/test_vector.py -v
 ```
-
-### Tests d'Évaluation du Système
-
-Le dossier `tests/` contient :
-- **`test_dataset.json`** : Questions annotées de référence
-- **`test_rag_quality.py`** : Évaluation automatique avec métriques (précision, rappel, F1)
 
 Lancer l'évaluation :
-```bash
-poetry run python tests/test_rag_quality.py
-```
+
+Notebooks => evaluate
+
+![Texte alternatif](images/output.png)
+
+![Texte alternatif](images/output1.png)
 
 ---
 
-## 📊 Métriques d'Évaluation
-
-Le système est évalué selon :
-- **Pertinence des documents récupérés** (Precision@K, Recall@K)
-- **Qualité de génération** (BLEU, ROUGE, BERTScore)
-- **Temps de réponse** (latence moyenne)
-
-Résultats stockés dans `tests/evaluation_results.json`.
-
----
 
 ## 🛠️ Stack Technique
 
@@ -314,41 +327,22 @@ Résultats stockés dans `tests/evaluation_results.json`.
 
 ### Pourquoi FastAPI ?
 - Documentation automatique (Swagger)
-- Performance élevée (async/await)
 - Validation automatique avec Pydantic
 
 ### Pourquoi Poetry ?
 - Résolution de dépendances déterministe
 - Gestion simplifiée des environnements
-- Build et publication standardisés
 
 ---
 
 ## 🔮 Perspectives d'Amélioration
 
-### Court terme
-- [ ] Ajout de filtres géographiques et temporels dans l'API
-- [ ] Cache Redis pour les requêtes fréquentes
-- [ ] Monitoring avec Prometheus/Grafana
-
-### Moyen terme
-- [ ] Fine-tuning d'un modèle d'embedding spécifique aux événements culturels
-- [ ] Système de feedback utilisateur pour améliorer les réponses
-- [ ] Support multi-langues (EN, ES, IT)
-
-### Long terme
-- [ ] Migration vers un vecteur store distribué (Qdrant, Pinecone)
-- [ ] Intégration d'un système de réservation
-- [ ] Interface web avec recommandations personnalisées
-
----
 
 
 ## 👤 Auteur
 
 **Data Scientist Freelance**  
 Projet : POC RAG pour Puls-Events  
-Contact : [votre.email@example.com]
 
 ---
 
