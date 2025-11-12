@@ -17,7 +17,6 @@ class OpenAgendaFetcher:
             'Content-Type': 'application/json'
         }
     
-    # Liste les agendas dispo selon les critères de recherche
     def list_agendas(self, search: Optional[str] = None, agendaLimit: int = 10) -> List[Dict]:
         url = f"{self.base_url}/agendas"
         params = {}
@@ -83,7 +82,6 @@ class OpenAgendaFetcher:
                     break
                 events.extend(page_events)
 
-                # récupère le curseur suivant : selon la réponse, c'est souvent dans data['links']['next']['after'] 
                 links = data.get('links', {})
                 next_link = links.get('next', {})
                 after = next_link.get('after')
@@ -112,7 +110,7 @@ class OpenAgendaFetcher:
         agendas = self.list_agendas(search=location, agendaLimit=20)
         
         if not agendas:
-            print(f"⚠️ Aucun agenda trouvé pour {location}")
+            print(f"Aucun agenda trouvé pour {location}")
             return []
         
         all_events = []

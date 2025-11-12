@@ -11,7 +11,6 @@ from src.vector.langchain_faiss import FAISSVectorStore
 router = APIRouter(tags=["RAG"])
 
 
-# ====== Route ======
 @router.post(
     "/ask",
     response_model=AskOut,

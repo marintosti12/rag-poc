@@ -132,8 +132,8 @@ Score: {score:.3f}
         m = re.search(r'\b(20\d{2})\b', question)
         if m:
             y = int(m.group(1))
-            if 2000 <= y <= 2099:
-                year_filter = y
+            year_filter = y
+
 
         k_raw = max(k, 10)
         if year_filter is not None:
@@ -147,12 +147,10 @@ Score: {score:.3f}
 
             if not results:
                 neutral_q = f"événement {year_filter}"
-                print(f"ℹ️ Fallback neutre: '{neutral_q}'")
                 results = self.vector_store.search(neutral_q, k=k_raw, filter_dict=None)
                 results = [(doc, score) for (doc, score) in results
                         if doc["metadata"].get("year") == year_filter]
 
-        # 5) seuil de score éventuel
         results = [(doc, score) for (doc, score) in results if score >= min_score]
 
         if not results:
@@ -163,8 +161,6 @@ Score: {score:.3f}
                 "context": "",
             }
             
-        print(results)
-
         print(f"✓ {len(results)} événements pertinents trouvés")
 
         context = self._format_documents(results)

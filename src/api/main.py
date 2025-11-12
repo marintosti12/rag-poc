@@ -1,4 +1,3 @@
-# src/api/main.py
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -31,7 +30,7 @@ app = FastAPI(
     title="RAG Events API",
     description="API d'interrogation RAG (événements culturels)",
     version="1.0.0",
-    lifespan=lifespan,   # ⬅️ remplace on_event
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -40,7 +39,6 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-# importe les routes après la création de app
 from src.api.controllers.ask_controller import router as ask_router
 from src.api.controllers.rebuild_controller import router as rebuild_router
 app.include_router(ask_router)

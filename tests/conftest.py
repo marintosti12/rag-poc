@@ -1,6 +1,3 @@
-"""
-Configuration pytest et fixtures réutilisables
-"""
 from unittest.mock import Mock
 import pytest
 import json
@@ -10,13 +7,9 @@ from typing import List, Dict
 import pandas as pd
 
 
-# ============================================================================
-# FIXTURES - Données de test
-# ============================================================================
 
 @pytest.fixture
 def sample_event():
-    """Un événement unique pour les tests"""
     return {
         'uid': 'event-123',
         'title': {'fr': 'Concert de Jazz'},
@@ -38,7 +31,6 @@ def sample_event():
 
 @pytest.fixture
 def sample_event_minimal():
-    """Événement avec données minimales"""
     return {
         'uid': 'event-minimal',
         'title': {'fr': 'Événement minimal'},
@@ -49,7 +41,6 @@ def sample_event_minimal():
 
 @pytest.fixture
 def sample_event_without_description():
-    """Événement sans description"""
     return {
         'uid': 'event-no-desc',
         'title': {'fr': 'Événement sans description'},
@@ -60,7 +51,6 @@ def sample_event_without_description():
 
 @pytest.fixture
 def sample_events_list(sample_event, sample_event_minimal):
-    """Liste d'événements pour les tests"""
     return [
         sample_event,
         sample_event_minimal,
@@ -85,14 +75,12 @@ def sample_events_list(sample_event, sample_event_minimal):
 
 @pytest.fixture
 def duplicate_events(sample_event):
-    """Liste avec des événements dupliqués"""
     event_copy = sample_event.copy()
     return [sample_event, event_copy, sample_event]
 
 
 @pytest.fixture
 def sample_agenda():
-    """Un agenda pour les tests"""
     return {
         'uid': 'agenda-paris-123',
         'title': {'fr': 'Agenda Culturel Paris'},
@@ -103,7 +91,6 @@ def sample_agenda():
 
 @pytest.fixture
 def sample_agendas_list(sample_agenda):
-    """Liste d'agendas"""
     return [
         sample_agenda,
         {
@@ -114,19 +101,14 @@ def sample_agendas_list(sample_agenda):
         },
         {
             'uid': 'agenda-marseille-789',
-            'title': 'Agenda Marseille',  # String direct
+            'title': 'Agenda Marseille', 
             'slug': 'marseille-events'
         }
     ]
 
 
-# ============================================================================
-# FIXTURES - DataFrames
-# ============================================================================
-
 @pytest.fixture
 def sample_dataframe():
-    """DataFrame nettoyé pour les tests"""
     return pd.DataFrame([
         {
             'id': 'event-123',
@@ -157,7 +139,6 @@ def sample_dataframe():
 
 @pytest.fixture
 def dataframe_with_duplicates():
-    """DataFrame avec doublons"""
     return pd.DataFrame([
         {'id': 'event-1', 'title': 'Event 1', 'description': 'Desc 1'},
         {'id': 'event-1', 'title': 'Event 1', 'description': 'Desc 1'},
@@ -167,7 +148,6 @@ def dataframe_with_duplicates():
 
 @pytest.fixture
 def dataframe_with_missing_descriptions():
-    """DataFrame avec descriptions manquantes"""
     return pd.DataFrame([
         {'id': 'event-1', 'title': 'Event 1', 'description': 'Desc 1'},
         {'id': 'event-2', 'title': 'Event 2', 'description': ''},
@@ -176,25 +156,18 @@ def dataframe_with_missing_descriptions():
     ])
 
 
-# ============================================================================
-# FIXTURES - Configuration et API
-# ============================================================================
-
 @pytest.fixture
 def mock_api_key():
-    """Clé API fictive pour les tests"""
     return "test_api_key_123456789"
 
 
 @pytest.fixture
 def mock_env_vars(monkeypatch, mock_api_key):
-    """Configure les variables d'environnement pour les tests"""
     monkeypatch.setenv("OPENAGENDA_API_KEY", mock_api_key)
 
 
 @pytest.fixture
 def temp_data_dir(tmp_path):
-    """Crée une structure de dossiers temporaire pour les tests"""
     data_dir = tmp_path / "data"
     raw_dir = data_dir / "raw"
     processed_dir = data_dir / "processed"
@@ -211,20 +184,14 @@ def temp_data_dir(tmp_path):
 
 @pytest.fixture
 def sample_raw_json_file(temp_data_dir, sample_events_list):
-    """Crée un fichier JSON de test"""
     filepath = temp_data_dir['raw'] / 'events_raw.json'
     with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(sample_events_list, f, ensure_ascii=False, indent=2)
     return filepath
 
 
-# ============================================================================
-# FIXTURES - Responses mock pour API
-# ============================================================================
-
 @pytest.fixture
 def mock_agendas_response():
-    """Réponse API simulée pour list_agendas"""
     return {
         'agendas': [
             {
@@ -244,7 +211,6 @@ def mock_agendas_response():
 
 @pytest.fixture
 def mock_events_response():
-    """Réponse API simulée pour fetch_events"""
     return {
         'events': [
             {
@@ -260,32 +226,14 @@ def mock_events_response():
     }
 
 
-# ============================================================================
-# FIXTURES - Utilitaires
-# ============================================================================
-
 @pytest.fixture
 def freeze_time():
-    """Fixture pour figer le temps dans les tests"""
     from freezegun import freeze_time as _freeze_time
     with _freeze_time("2025-11-12 10:00:00"):
         yield
 
-
-# Fixture désactivée car elle cause des problèmes avec matplotlib
-# @pytest.fixture(autouse=True)
-# def reset_pandas_options():
-#     """Réinitialise les options pandas après chaque test"""
-#     yield
-#     pd.reset_option('all')
-
-# ============================================================================
-# FIXTURES - Données de test
-# ============================================================================
-
 @pytest.fixture
 def sample_chunks():
-    """Chunks valides pour les tests"""
     return [
         {
             'text': 'Concert de jazz à Paris le 15 décembre',
@@ -310,18 +258,16 @@ def sample_chunks():
 
 @pytest.fixture
 def sample_chunks_with_empty():
-    """Chunks avec textes vides"""
     return [
         {'text': 'Concert de jazz', 'id': 'event-1'},
-        {'text': '', 'id': 'event-2'},  # Texte vide
-        {'text': '   ', 'id': 'event-3'},  # Seulement espaces
+        {'text': '', 'id': 'event-2'},  
+        {'text': '   ', 'id': 'event-3'},  
         {'text': 'Exposition d\'art', 'id': 'event-4'},
     ]
 
 
 @pytest.fixture
 def chunks_without_text():
-    """Chunks sans clé 'text'"""
     return [
         {'id': 'event-1', 'category': 'musique'},
         {'id': 'event-2', 'category': 'exposition'}
@@ -330,7 +276,6 @@ def chunks_without_text():
 
 @pytest.fixture
 def mock_embeddings():
-    """Mock pour les embeddings"""
     mock = Mock()
     mock.embed_documents = Mock(return_value=[[0.1, 0.2, 0.3]] * 3)
     mock.embed_query = Mock(return_value=[0.1, 0.2, 0.3])
@@ -339,7 +284,6 @@ def mock_embeddings():
 
 @pytest.fixture
 def mock_vector_store():
-    """Mock pour le vector store FAISS"""
     mock = Mock()
     mock.docstore = Mock()
     mock.docstore._dict = {'doc1': 'value1', 'doc2': 'value2'}
@@ -351,7 +295,6 @@ def mock_vector_store():
 
 @pytest.fixture
 def temp_index_dir(tmp_path):
-    """Répertoire temporaire pour les index"""
     index_dir = tmp_path / "faiss_index"
     index_dir.mkdir()
     return str(index_dir)

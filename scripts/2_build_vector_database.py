@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 import os
 
@@ -12,19 +11,16 @@ def main():
     print("VECTORISATION ET INDEXATION FAISS")
     print("="*70)
 
-    # Configuration
     EVENTS_FILE = 'data/processed/events_clean.json'
     CHUNK_SIZE = 500
     CHUNK_OVERLAP = 50
     EMBEDDING_PROVIDER = "huggingface"
     INDEX_PATH = "data/processed/faiss_index"
     
-    # Information Configuration
     print(f"\n💻 Source : {EVENTS_FILE}")
     print(f"🔢 Taille des chunks : {CHUNK_SIZE} caractères")
     print(f"📩 Provider d'embeddings : {EMBEDDING_PROVIDER}")
     
-    # Vérification du fichier d'entrée
     if not os.path.exists(EVENTS_FILE):
         print(f"\n Fichier non trouvé : {EVENTS_FILE}")
         return 1
@@ -51,7 +47,6 @@ def main():
     
     print(f"✓ {len(chunks)} chunks créés")
     
-    # Sauvegarder un échantillon de chunks
     chunks_sample_file = 'data/processed/chunks_sample.json'
     with open(chunks_sample_file, 'w', encoding='utf-8') as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)

@@ -70,7 +70,7 @@ class OpenAgendaFetcher:
         events = []
         page = 1
         after = None
-        max_pages = 11  # Page 0 à 10
+        max_pages = 11 
         
         while len(events) < limit and page <= max_pages:
             try:
@@ -79,36 +79,30 @@ class OpenAgendaFetcher:
                 
                 resp = requests.get(url, headers=self.headers, params=params)
                 
-                # Gestion des erreurs HTTP
                 if resp.status_code != 200:
                     print(f"Erreur HTTP {resp.status_code} : {resp.text}")
                     break
                 
                 data = resp.json()
                 
-                # Vérification des erreurs API
                 if 'error' in data:
                     print(f"Erreur API : {data.get('error')}")
                     break
                 
                 page_events = data.get('events', [])
                 
-                # Si aucun événement dans cette page
                 if not page_events:
                     print("Aucun événement supplémentaire trouvé.")
                     break
                 
-                # Affiche le nombre d'événements pour cette page
                 print(f"✓ Page {page} : {len(page_events)} événements récupérés")
                 
                 events.extend(page_events)
                 
-                # Récupère le curseur suivant
                 links = data.get('links', {})
                 next_link = links.get('next', {})
                 after = next_link.get('after')
                 
-                # Si pas de curseur suivant, on arrête
                 if not after:
                     break
                 

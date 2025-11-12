@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import json
 import sys
 import os
@@ -15,7 +14,6 @@ def clean_events(input_file: str, output_json: str, output_csv: str) -> int:
         print(f"\n Fichier non trouvé : {input_file}")
         return 0
     
-    # Chargement
     print(f"\n📂 Chargement de {input_file}...")
     with open(input_file, 'r', encoding='utf-8') as f:
         events = json.load(f)
@@ -34,7 +32,6 @@ def clean_events(input_file: str, output_json: str, output_csv: str) -> int:
         print("\n Aucun événement valide après nettoyage")
         return 0
     
-    # Sauvegarde
     print(f"\n💾 Sauvegarde des données nettoyées...")
     os.makedirs(os.path.dirname(output_json), exist_ok=True)
     
@@ -52,7 +49,6 @@ def main():
     print("COLLECTE DES ÉVÉNEMENTS - OPENAGENDA")
     print("="*70)
     
-    # Configuration
     API_KEY = os.getenv("OPEN_AGENDA_API_KEY")
     LOCATION = os.getenv("TARGET_CITY")
     DATE_START = "2024-10-30T00:00:00.000Z"
@@ -67,25 +63,21 @@ def main():
     os.makedirs("data/raw", exist_ok=True)
     os.makedirs("data/processed", exist_ok=True)
 
-    # Information Configuration
     print(f"\n🔑 Clé API : {API_KEY[:10]}***")
     print(f"📍 Localisation : {LOCATION}")
     print(f"📅 Période : {DATE_START} → {DATE_END}")
     print(f"🔢 Limite par agenda : {LIMIT_PER_AGENDA}")
     
-    # Initialisation du fetcher
     print("\n" + "-"*70)
     print("[1/3] 🔌 Connexion à l'API OpenAgenda...")
     print("-"*70)
     
     fetcher = OpenAgendaFetcher(API_KEY)
     
-    # Test de connexion
     if not fetcher.test_connection():
         print("\n Impossible de se connecter à l'API")
         return 1
     
-    # Collecte des événements
     print("\n" + "-"*70)
     print("[2/3] 📥 Collecte des événements...")
     print("-"*70)
@@ -103,7 +95,6 @@ def main():
         print("\n ⚠️ Aucun événement récupéré")
         return 1
     
-    # Sauvegarde
     print("\n" + "-"*70)
     print("[3/3] 💾 Sauvegarde des données...")
     print("-"*70)
@@ -116,7 +107,6 @@ def main():
         output_csv=CLEAN_CSV
     )
 
-    # Statistiques
     print("\n" + "="*70)
     print("✅ COLLECTE TERMINÉE AVEC SUCCÈS")
     print("="*70)
@@ -128,7 +118,6 @@ def main():
     print(f"  • Agendas sources : {agendas_count}")
     print(f"  • Fichier créé : {OUTPUT_FILE}")
     
-    # Aperçu des premiers événements
     print(f"\n📋 Aperçu des événements :")
     for i, event in enumerate(events[:3], 1):
         title = event.get('title', {})

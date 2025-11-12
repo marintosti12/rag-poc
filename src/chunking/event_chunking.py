@@ -57,22 +57,17 @@ class EventChunking:
         
         date_start = event.get('date_start', '')
         if date_start:
-            # affichage lisible
             date_readable = self.format_date(date_start)
             parts.append(f"Date: {date_readable}")
 
-            # ==== PATCH MINIMAL: signaux explicites pour les requêtes "année 2024" ====
             try:
                 dt = datetime.fromisoformat(date_start.replace('Z', '+00:00'))
-                parts.append(f"Année: {dt.year}")        # ex: Année: 2025
-                parts.append(f"{dt.year}:")               # ex: 2025: (jeton isolé)
+                parts.append(f"Année: {dt.year}")       
+                parts.append(f"{dt.year}:")           
             except Exception:
-                # si parsing impossible, on tente quand même d’offrir un signal ISO
                 pass
 
-            # toujours utile pour les correspondances exactes
             parts.append(f"DateISO: {date_start}")
-            # ==== FIN PATCH ====
         
         location_parts = []
         location_name = event.get('location_name', '').strip()

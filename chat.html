@@ -5,7 +5,6 @@
   <title>RAG Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -24,11 +23,9 @@
     }
   </script>
 
-  <!-- Markdown parser + sanitizer -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
 
-  <!-- Styles Markdown (tableaux, liens, etc.) -->
   <style>
     .md :where(table){width:100%; border-collapse:collapse; margin:0.5rem 0;}
     .md :where(th,td){border:1px solid #1f2937; padding:0.5rem; vertical-align:top;}
@@ -42,7 +39,6 @@
 
 <body class="bg-bg text-text min-h-screen">
   <div class="max-w-3xl mx-auto px-4 py-6 flex flex-col gap-4 h-screen">
-    <!-- Header -->
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold">RAG Chat</h1>
@@ -53,13 +49,10 @@
       </div>
     </header>
 
-    <!-- Messages -->
     <main id="messages"
       class="flex-1 overflow-auto rounded-2xl border border-line bg-card p-4 space-y-3">
-      <!-- messages insérés ici -->
     </main>
 
-    <!-- Composer -->
     <section class="rounded-2xl bg-card border border-line p-4 space-y-3">
       <form id="form" class="flex items-stretch gap-2">
         <input id="q" type="text" autocomplete="off"
@@ -89,12 +82,43 @@
     </section>
   </div>
 
+  <div id="rebuildModal" class="fixed inset-0 hidden items-center justify-center z-50">
+    <div class="absolute inset-0 bg-black/60"></div>
+    <div class="relative w-[min(900px,95vw)] max-h-[90vh] overflow-hidden rounded-2xl border border-line bg-card shadow-xl">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-line">
+        <h2 class="font-semibold">Rebuild – collez votre JSON</h2>
+        <button id="closeRebuild" class="text-muted hover:text-text">&times;</button>
+      </div>
+
+      <div class="p-4 space-y-3">
+        <p class="text-sm text-muted">
+          Le contenu sera envoyé en <code>POST /rebuild</code>. Vous pouvez aussi
+          <button id="loadExample" class="underline text-accent">charger un exemple</button> ou
+          <button id="loadFileBtn" class="underline text-accent">importer un fichier .json</button>.
+        </p>
+
+        <textarea id="rebuildJson" class="w-full h-[45vh] rounded-xl bg-bg border border-line p-3 font-mono text-sm outline-none focus:border-accent"
+          spellcheck="false" placeholder='{
+  "docs": [ { "text": "…", "metadata": { "date_start": "2025-11-15" } } ],
+  "persist_path": "data/processed/faiss_index"
+}'></textarea>
+
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-xs text-red-300" id="rebuildErr"></div>
+          <div class="flex items-center gap-2">
+            <button id="cancelRebuild" class="px-3 py-2 rounded-lg border border-line hover:bg-bg">Annuler</button>
+            <button id="sendRebuild" class="px-3 py-2 rounded-lg bg-emerald-400/90 text-bg font-medium hover:opacity-90">Envoyer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <input id="rebuildFile" type="file" accept=".json,application/json" class="hidden" />
+  </div>
+
   <script>
-    // ====== CONFIG ======
     const DEFAULT_API = "http://127.0.0.1:8000";
     const API_BASE = localStorage.getItem("API_BASE") || DEFAULT_API;
 
-    // ====== DOM ======
     const elMsgs   = document.getElementById("messages");
     const elForm   = document.getElementById("form");
     const elQ      = document.getElementById("q");
@@ -104,6 +128,17 @@
     const elStatus = document.getElementById("status");
     const elApiLbl = document.getElementById("apiBaseLabel");
     const elEditApi= document.getElementById("editApi");
+
+    const modal         = document.getElementById("rebuildModal");
+    const taJson        = document.getElementById("rebuildJson");
+    const btnRebuild    = document.getElementById("rebuildBtn");
+    const btnSendRe     = document.getElementById("sendRebuild");
+    const btnCancelRe   = document.getElementById("cancelRebuild");
+    const btnCloseRe    = document.getElementById("closeRebuild");
+    const btnLoadEx     = document.getElementById("loadExample");
+    const btnLoadFile   = document.getElementById("loadFileBtn");
+    const inputFile     = document.getElementById("rebuildFile");
+    const elRebuildErr  = document.getElementById("rebuildErr");
 
     elApiLbl.textContent = API_BASE;
     elApiLbl.title = "Double-cliquez pour modifier";
@@ -118,7 +153,6 @@
       }
     }
 
-    // ====== Markdown rendering ======
     function renderMarkdown(mdText) {
       const renderer = new marked.Renderer();
       const oldLink = renderer.link;
@@ -126,29 +160,19 @@
         const html = oldLink.call(this, href, title, text);
         return html.replace('<a ', '<a target="_blank" rel="noopener noreferrer" ');
       };
-      marked.setOptions({
-        breaks: true,
-        mangle: false,
-        headerIds: false,
-        renderer
-      });
+      marked.setOptions({ breaks: true, mangle: false, headerIds: false, renderer });
       const rawHtml = marked.parse(mdText || "");
       return DOMPurify.sanitize(rawHtml);
     }
 
-    // ====== UI helpers ======
     function addMsg(text, who = "bot") {
       const row = document.createElement("div");
       row.className = "flex " + (who === "me" ? "justify-end" : "justify-start");
-
       const bubble = document.createElement("div");
       bubble.className = (who === "me")
         ? "max-w-[80%] rounded-2xl px-4 py-3 bg-[#1e293b] border border-line md"
         : "max-w-[80%] rounded-2xl px-4 py-3 bg-[#0b1220] border border-line md";
-
-      // Rendu Markdown sécurisé
       bubble.innerHTML = renderMarkdown(text);
-
       row.appendChild(bubble);
       elMsgs.appendChild(row);
       elMsgs.scrollTop = elMsgs.scrollHeight;
@@ -172,7 +196,6 @@
       elStatus.innerHTML = isLoading ? spinner(label) : "";
     }
 
-    // ====== API calls ======
     async function ask(question, k = 10) {
       elErr.textContent = "";
       setLoading(true, "Réponse en cours…");
@@ -192,18 +215,11 @@
       }
     }
 
-    async function rebuildDemo() {
+    async function rebuildWithJson(payload) {
       elErr.textContent = "";
+      elRebuildErr.textContent = "";
       elStatus.innerHTML = spinner("Rebuild…");
       try {
-        const payload = {
-          docs: [
-            { text: "Concert Jazz à Paris, 15/11/2025, Salle Pleyel.", metadata: { category:"jazz", date_start:"2025-11-15" } },
-            { text: "Expo photo à Lyon, 20/11/2025.", metadata: { category:"exposition", date_start:"2025-11-20" } }
-          ],
-          persist_path: "data/processed/faiss_index",
-          embedding_provider: "mistral"
-        };
         const res = await fetch(`${API_BASE}/rebuild`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -215,32 +231,98 @@
         }
         const data = await res.json();
         elStatus.textContent = `Index prêt (${data.count} éléments)`;
+        closeRebuildModal();
       } catch (e) {
-        elErr.textContent = e.message || String(e);
+        elRebuildErr.textContent = e.message || String(e);
         elStatus.textContent = "";
       }
     }
 
-    // ====== Events ======
-    document.getElementById("rebuildBtn").addEventListener("click", rebuildDemo);
+    function openRebuildModal() {
+      elRebuildErr.textContent = "";
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+    function closeRebuildModal() {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    const exampleJson = {
+      "docs": [
+        {
+          "metadata": {
+            "category": "jazz",
+            "date_start": "2025-11-15",
+            "url": "https://exemple/jazz"
+          },
+          "text": "Concert Jazz à Paris, 15/11/2025, Salle Pleyel."
+        },
+        {
+          "metadata": {
+            "category": "exposition",
+            "date_start": "2025-11-20"
+          },
+          "text": "Expo photo à Lyon, 20/11/2025."
+        }
+      ],
+      "persist_path": "data/processed/faiss_index"
+    };
+
+    document.getElementById("rebuildBtn").addEventListener("click", openRebuildModal);
+    document.getElementById("closeRebuild").addEventListener("click", closeRebuildModal);
+    document.getElementById("cancelRebuild").addEventListener("click", closeRebuildModal);
+
+    btnLoadEx.addEventListener("click", (e) => {
+      e.preventDefault();
+      taJson.value = JSON.stringify(exampleJson, null, 2);
+    });
+
+    btnLoadFile.addEventListener("click", (e) => {
+      e.preventDefault();
+      inputFile.click();
+    });
+
+    inputFile.addEventListener("change", async () => {
+      const f = inputFile.files?.[0];
+      if (!f) return;
+      try {
+        const text = await f.text();
+        JSON.parse(text);
+        taJson.value = text;
+      } catch {
+        elRebuildErr.textContent = "Fichier JSON invalide.";
+      }
+    });
+
+    btnSendRe.addEventListener("click", () => {
+      elRebuildErr.textContent = "";
+      let payload;
+      try {
+        payload = JSON.parse(taJson.value || "{}");
+      } catch (e) {
+        elRebuildErr.textContent = "JSON invalide : " + (e.message || e);
+        return;
+      }
+      if (!payload.docs || !Array.isArray(payload.docs) || payload.docs.length === 0) {
+        elRebuildErr.textContent = "Le JSON doit contenir un tableau 'docs' non vide.";
+        return;
+      }
+      rebuildWithJson(payload);
+    });
 
     elForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const q = elQ.value.trim();
       if (!q) return;
 
-      // Message utilisateur (rendu Markdown pour homogénéité : italique par ex.)
       addMsg(`*${q}*`, "me");
       elQ.value = "";
 
       try {
         const k = Math.max(1, Math.min(20, parseInt(elK.value || "10", 10)));
         const data = await ask(q, k);
-
-        // Réponse du bot (Markdown rendu)
         addMsg(data.answer || "(pas de réponse)");
-
-        // Info contexte (texte simple ou mini markdown)
         if (Array.isArray(data.contexts) && data.contexts.length) {
           addMsg(`_(${data.contexts.length} passages utilisés)_`, "bot");
         }
@@ -249,7 +331,6 @@
       }
     });
 
-    // Message d’accueil
     addMsg("Bonjour 👋 Posez une question (ex.: « Événements de jazz à Paris en novembre ? »)");
   </script>
 </body>

@@ -32,7 +32,6 @@ class EventsCleaner:
                 print(f"Erreur sur événement {uid}: {e}")
                 continue
         
-        # Définir les colonnes explicitement pour garantir l'ordre et la présence même si vide
         columns = [
             'id', 'title', 'description', 'location_name', 
             'location_city', 'date_start', 'date_end', 
@@ -40,52 +39,28 @@ class EventsCleaner:
         ]
         
         if not cleaned:
-            # Retourner un DataFrame vide avec les bonnes colonnes
             return pd.DataFrame(columns=columns)
                 
         return pd.DataFrame(cleaned, columns=columns)
     
     @staticmethod
     def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
-        """Supprime les doublons"""
         if df.empty:
             return df
         return df.drop_duplicates(subset=['id'])
     
     @staticmethod
     def remove_missing_descriptions(df: pd.DataFrame) -> pd.DataFrame:
-        """Supprime les événements sans description"""
         if df.empty or 'description' not in df.columns:
             return df
         return df[df['description'].notna() & (df['description'] != '')]
     
     @staticmethod
     def clean_pipeline(events: List[Dict]) -> pd.DataFrame:
-        """Pipeline complet de nettoyage"""
         df = EventsCleaner.extract_key_fields(events)
-        print(f"Événements après extraction : {len(df)}")
         
         df = EventsCleaner.remove_duplicates(df)
-        print(f"Événements après suppression doublons : {len(df)}")
         
         df = EventsCleaner.remove_missing_descriptions(df)
-        print(f"Événements après filtrage descriptions : {len(df)}")
         
         return df
-
-
-if __name__ == "__main__":
-    # Test
-    with open('data/raw/events_raw.json', 'r') as f:
-        events = json.load(f)
-    
-    cleaner = EventsCleaner()
-    df_clean = cleaner.clean_pipeline(events)
-    
-    # Sauvegarde
-    df_clean.to_csv('data/processed/events_clean.csv', index=False)
-    df_clean.to_json('data/processed/events_clean.json', 
-                     orient='records', force_ascii=False, indent=2)
-    
-    print(f"\n✓ Données nettoyées sauvegardées")
-    print(f"Colonnes : {list(df_clean.columns)}")

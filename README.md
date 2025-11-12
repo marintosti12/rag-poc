@@ -336,8 +336,15 @@ Notebooks => evaluate
 ---
 
 ## 🔮 Perspectives d'Amélioration
+- Gestion multi-zones (Paris, Lyon, Nantes…)
 
+- Évaluation automatique plus fine (RAGAS, BLEU, F1)
 
+- Mise à jour automatique de l’index FAISS
+
+- Endpoint /feedback pour collecter les évaluations utilisateurs
+
+- Génération automatique de rapports hebdomadaires sur les performances du modèle
 
 ## 👤 Auteur
 
