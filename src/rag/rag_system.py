@@ -11,7 +11,7 @@ load_dotenv()
 class RAGSystem:    
     def __init__(self, 
                  vector_store,
-                 model_name: str = "mistral-medium-2508",
+                 model_name: str = "mistral-medium-2505",
                  temperature: float = 0.0):
         
         self.vector_store = vector_store
@@ -56,7 +56,7 @@ class RAGSystem:
     3) Sinon, si l’année AAAA apparaît dans le texte du CONTEXTE (ex. "DateISO:" ou "Date:"), considère ces événements comme correspondants.
     4) S’il y a plusieurs correspondances, garde les plus pertinentes (et les plus proches en date).
 
-    ⚠️ IMPORTANT
+    IMPORTANT
     - N’écris **jamais** la phrase d’échec si le CONTEXTE contient au moins 1 événement : dans ce cas, rends **toujours** un tableau Markdown avec les meilleurs candidats (même si la correspondance n’est pas parfaite).
     - N’écris la phrase **exacte** "Je n'ai trouvé aucun événement correspondant à votre recherche." **que si** après application des règles ci-dessus, tu n’as **strictement aucun** événement à afficher.
 
@@ -90,7 +90,6 @@ class RAGSystem:
 
 
 
-    
     def _format_documents(self, results: List[tuple]) -> str:        
         context_parts = []
         
@@ -129,7 +128,6 @@ Score: {score:.3f}
     def query(self, question: str, k: int = 10, min_score: float = 0.0) -> Dict:
         print(f"\n🔍 Recherche pour : '{question}'")
 
-        # 1) détecter une année explicite
         year_filter = None
         m = re.search(r'\b(20\d{2})\b', question)
         if m:
@@ -137,20 +135,16 @@ Score: {score:.3f}
             if 2000 <= y <= 2099:
                 year_filter = y
 
-        # 2) sur-échantillonner si on filtre par année (évite le 0 résultat)
         k_raw = max(k, 10)
         if year_filter is not None:
-            k_raw = max(k * 10, 200)  # <- clé : on prend large pour que le post-filtre trouve des 2024
+            k_raw = max(k * 10, 200)  
 
-        # IMPORTANT : on n'envoie PAS le filter FAISS ici, on filtre nous-mêmes après
         results = self.vector_store.search(question, k=k_raw, filter_dict=None)
 
-        # 3) filtrage côté Python
         if year_filter is not None:
             results = [(doc, score) for (doc, score) in results
                     if doc["metadata"].get("year") == year_filter]
 
-            # 4) fallback neutre si toujours vide : on relance une requête simple
             if not results:
                 neutral_q = f"événement {year_filter}"
                 print(f"ℹ️ Fallback neutre: '{neutral_q}'")

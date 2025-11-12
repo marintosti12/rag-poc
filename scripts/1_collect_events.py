@@ -12,7 +12,7 @@ load_dotenv()
 
 def clean_events(input_file: str, output_json: str, output_csv: str) -> int:
     if not os.path.exists(input_file):
-        print(f"\n❌ Fichier non trouvé : {input_file}")
+        print(f"\n Fichier non trouvé : {input_file}")
         return 0
     
     # Chargement
@@ -23,7 +23,7 @@ def clean_events(input_file: str, output_json: str, output_csv: str) -> int:
     print(f"✓ {len(events)} événements bruts chargés")
     
     if len(events) == 0:
-        print("\n❌ Aucun événement à nettoyer")
+        print("\n Aucun événement à nettoyer")
         return 0
     
     print("\n🧹 Nettoyage en cours...")
@@ -31,7 +31,7 @@ def clean_events(input_file: str, output_json: str, output_csv: str) -> int:
     df_clean = cleaner.clean_pipeline(events)
     
     if len(df_clean) == 0:
-        print("\n❌ Aucun événement valide après nettoyage")
+        print("\n Aucun événement valide après nettoyage")
         return 0
     
     # Sauvegarde
@@ -82,10 +82,7 @@ def main():
     
     # Test de connexion
     if not fetcher.test_connection():
-        print("\n❌ Impossible de se connecter à l'API")
-        print("\n💡 Vérifications :")
-        print("  • Votre clé API est-elle valide ?")
-        print("  • Avez-vous une connexion internet ?")
+        print("\n Impossible de se connecter à l'API")
         return 1
     
     # Collecte des événements
@@ -103,11 +100,7 @@ def main():
     
 
     if not events:
-        print("\n⚠️ Aucun événement récupéré")
-        print("\n💡 Suggestions :")
-        print(f"  • Essayez une autre ville : location='Lyon'")
-        print(f"  • Élargissez la période de dates")
-        print(f"  • Vérifiez qu'il existe des agendas pour {LOCATION}")
+        print("\n ⚠️ Aucun événement récupéré")
         return 1
     
     # Sauvegarde

@@ -26,9 +26,7 @@ def main():
     
     # Vérification du fichier d'entrée
     if not os.path.exists(EVENTS_FILE):
-        print(f"\n❌ Fichier non trouvé : {EVENTS_FILE}")
-        print("\n💡 Exécutez d'abord :")
-        print("   poetry run python scripts/step2_collect_and_clean.py")
+        print(f"\n Fichier non trouvé : {EVENTS_FILE}")
         return 1
     
     print("📂 CHARGEMENT DES ÉVÉNEMENTS")
@@ -39,7 +37,7 @@ def main():
     print(f"✓ {len(events)} événements chargés")
     
     if len(events) == 0:
-        print("\n❌ Aucun événement à vectoriser")
+        print("\n Aucun événement à vectoriser")
         return 1
     
     print("DÉCOUPAGE EN CHUNKS")
@@ -58,12 +56,6 @@ def main():
     with open(chunks_sample_file, 'w', encoding='utf-8') as f:
         json.dump(chunks, f, ensure_ascii=False, indent=2)
     print(f"  • Échantillon sauvegardé : {chunks_sample_file}")
-    
-    # Exemple de chunk
-    print(f"\n📝 Exemple de chunk :")
-    example_chunk = chunks[0]
-    print(f"  Titre événement : {example_chunk.get('title', '(sans titre)')}")
-    print(f"  Texte : {example_chunk.get('text', '')[:150]}...")
     
     print("🔢 VECTORISATION ET INDEXATION FAISS")
     
@@ -87,11 +79,9 @@ if __name__ == "__main__":
     try:
         exit_code = main()
         sys.exit(exit_code)
-    except KeyboardInterrupt:
-        print("\n\n⚠️  Interruption par l'utilisateur")
-        sys.exit(1)
+
     except Exception as e:
-        print(f"\n❌ Erreur inattendue : {e}")
+        print(f"\n Erreur inattendue : {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
